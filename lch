@@ -12,6 +12,8 @@ usage() {
 		  lch list          - list agents installed by lch
 		  lch cat <name>    - show plist of agent
 		  lch rm <name>     - remove an agent installed by lch
+		  lch new <name>    - create an empty agent
+		  lch edit <name>   - edit an agent's plist
 	END
 
 }
@@ -23,7 +25,7 @@ lch() {
 		new)
 			name=$2
 			require $name
-			cat > `filename $name` <<-END
+			cat > `agentname $name` <<-END
 				<?xml version="1.0" encoding="UTF-8"?>
 				<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 				<plist version="1.0">
@@ -31,7 +33,7 @@ lch() {
 				  <key>KeepAlive</key>
 				  <false/>
 				  <key>Label</key>
-				  <string>$2</string>
+				  <string>$prefix.$2</string>
 				  <key>ProgramArguments</key>
 				  <array>
 				    <string>/path/to/command</string>
@@ -50,7 +52,7 @@ lch() {
 		name=$2
 		require $name
 
-		cat /usr/local/opt/$name/homebrew.mxcl.$name.plist | replace $name > `filename $name`
+		cat /usr/local/opt/$name/homebrew.mxcl.$name.plist | replace $name > `agentname $name`
 		lch load $name
 		;;
 
@@ -80,14 +82,14 @@ lch() {
 		name=$2
 		require $name
 
-		launchctl load `filename $name`
+		launchctl load `agentname $name`
 		;;
 
 	unload)
 		name=$2
 		require $name
 
-		launchctl unload `filename $name`
+		launchctl unload `agentname $name`
 		;;
 
 	list)
@@ -98,21 +100,28 @@ lch() {
 		name=$2
 		require $name
 
-		cat `filename $name`
+		cat `agentname $name`
+		;;
+
+	edit)
+		name=$2
+		require $name
+
+		$EDITOR `agentname $name`
 		;;
 
 	rm)
 		name=$2
 		require $name
 
-		rm `filename $name`
+		rm `agentname $name`
 		;;
 	*)
 		usage
 	esac
 }
 
-filename() {
+agentname() {
 	echo -n "$HOME/Library/LaunchAgents/$prefix.$1.plist"
 }
 
