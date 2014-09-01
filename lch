@@ -92,7 +92,8 @@ lch() {
 		launchctl unload `agentname $name`
 		;;
 
-	list)
+	list | ls)
+		launchctl list | head -n1
 		launchctl list | grep -E 'lch\..+'
 		;;
 
