@@ -1,0 +1,137 @@
+#!/usr/bin/env bash
+
+usage() {
+	cat<<-END
+		Usage:
+		  lch load <name>   - load an agent installed by lch
+		  lch unload <name> - unload an agent installed by lch
+		  lch start <name>  - start a loaded agent
+		  lch stop <name>   - stop a loaded agent
+		  lch brew <name>   - load an agent from an homebrew formula and tell it not to start at boot
+		  lch unbrew <name> - unload agent from an homebrew formula
+		  lch list          - list agents installed by lch
+		  lch cat <name>    - show plist of agent
+		  lch rm <name>     - remove an agent installed by lch
+	END
+
+}
+
+prefix=lch
+
+lch() {
+	case $1 in
+		new)
+			name=$2
+			require $name
+			cat > `filename $name` <<-END
+				<?xml version="1.0" encoding="UTF-8"?>
+				<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+				<plist version="1.0">
+				<dict>
+				  <key>KeepAlive</key>
+				  <false/>
+				  <key>Label</key>
+				  <string>$2</string>
+				  <key>ProgramArguments</key>
+				  <array>
+				    <string>/path/to/command</string>
+				    <string>--help</string>
+				  </array>
+				  <key>RunAtLoad</key>
+				  <false/>
+				  <key>WorkingDirectory</key>
+				  <string>/usr/local/var</string>
+				</dict>
+				</plist>
+			END
+			;;
+
+	brew)
+		name=$2
+		require $name
+
+		cat /usr/local/opt/$name/homebrew.mxcl.$name.plist | replace $name > `filename $name`
+		lch load $name
+		;;
+
+	unbrew)
+		name=$2
+		require $name
+
+		lch unload $name
+		lch rm $name
+		;;
+
+	start)
+		name=$2
+		require $name
+
+		launchctl start $prefix.$name
+		;;
+
+	stop)
+		name=$2
+		require $name
+
+		launchctl stop $prefix.$name
+		;;
+
+	load)
+		name=$2
+		require $name
+
+		launchctl load `filename $name`
+		;;
+
+	unload)
+		name=$2
+		require $name
+
+		launchctl unload `filename $name`
+		;;
+
+	list)
+		launchctl list | grep -E 'lch\..+'
+		;;
+
+	cat)
+		name=$2
+		require $name
+
+		cat `filename $name`
+		;;
+
+	rm)
+		name=$2
+		require $name
+
+		rm `filename $name`
+		;;
+	*)
+		usage
+	esac
+}
+
+filename() {
+	echo -n "$HOME/Library/LaunchAgents/$prefix.$1.plist"
+}
+
+plist() {
+	/usr/libexec/PlistBuddy "$@"
+}
+
+replace() {
+	name=$1
+	tmpfile=/tmp/lch-$RANDOM.plist
+	cat > $tmpfile
+	plist \
+	  -c "Set :RunAtLoad false" \
+	  -c "Set :Label $prefix.$name" $tmpfile
+	cat $tmpfile
+}
+
+require() {
+	[[ -z "$1" ]] && usage && exit 1
+}
+
+lch "$@"
