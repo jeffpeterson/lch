@@ -5,15 +5,27 @@ usage() {
 		Usage:
 		  lch load <name>   - load an agent installed by lch
 		  lch unload <name> - unload an agent installed by lch
-		  lch start <name>  - start a loaded agent
-		  lch stop <name>   - stop a loaded agent
+		  lch reload <name> - reload an agent installed by lch
+
+		  lch start <name> - start a loaded agent
+		  lch stop <name>  - stop a loaded agent
+
 		  lch brew <name>   - load an agent from an homebrew formula and tell it not to start at boot
 		  lch unbrew <name> - unload agent from an homebrew formula
-		  lch list          - list agents installed by lch
-		  lch cat <name>    - show plist of agent
-		  lch rm <name>     - remove an agent installed by lch
-		  lch new <name>    - create an empty agent
-		  lch edit <name>   - edit an agent's plist
+
+		  lch cat <name>  - show plist of agent
+		  lch edit <name> - edit an agent's plist
+		  lch list        - list agents installed by lch
+		  lch new <name>  - create an empty agent
+		  lch rm <name>   - remove an agent installed by lch
+
+		  lch add <name> <key> <type> <value> - add a key to an agent's plist
+		  lch set <name> <key> <value>        - set a key in an agent's plist
+
+		Examples:
+		  brew install mysql
+		  lch brew mysql
+		  lch start mysql
 	END
 
 }
@@ -43,16 +55,30 @@ lch() {
 				  <false/>
 				  <key>WorkingDirectory</key>
 				  <string>/usr/local/var</string>
+				  <key>StandardErrorPath</key>
+				  <string>$HOME/.log/$prefix.$2.stderr.log</string>
+				  <key>StandardOutPath</key>
+				  <string>$HOME/.log/$prefix.$2.stdout.log</string>
+				  <key>EnvironmentVariables</key>
+				  <dict>
+				    <key>PATH</key>
+				    <string>$PATH</string>
+				  </dict>
 				</dict>
 				</plist>
 			END
+			mkdir -p $HOME/.log
 			;;
 
 	brew)
 		name=$2
 		require $name
 
-		cat /usr/local/opt/$name/homebrew.mxcl.$name.plist | replace $name > `agentname $name`
+		filename="/usr/local/opt/$name/homebrew.mxcl.$name.plist"
+
+		cat "$filename" >/dev/null || exit 1;
+
+		cat "$filename" | replace $name > `agentname $name`
 		lch load $name
 		;;
 
@@ -62,6 +88,27 @@ lch() {
 
 		lch unload $name
 		lch rm $name
+		;;
+
+	set)
+		require $2 # name
+		require $3 # key
+		require $4 # value
+
+		filename=`agentname $2`
+
+		cat $filename | set $3 "${@:4}" > $filename
+		;;
+
+	add)
+		require $2 # name
+		require $3 # key
+		require $4 # type
+		require $5 # value
+
+		filename=`agentname $2`
+
+		cat $filename | add $3 $4 "${@:5}" > $filename
 		;;
 
 	start)
@@ -78,11 +125,21 @@ lch() {
 		launchctl stop $prefix.$name
 		;;
 
+	restart)
+		lch stop $2
+		lch start $2
+		;;
+
 	load)
 		name=$2
 		require $name
 
 		launchctl load `agentname $name`
+		;;
+
+	reload)
+		lch unload $2
+		lch load $2
 		;;
 
 	unload)
@@ -123,7 +180,7 @@ lch() {
 }
 
 agentname() {
-	echo -n "$HOME/Library/LaunchAgents/$prefix.$1.plist"
+  echo -n "$HOME/Library/LaunchAgents/$prefix.$1.plist"
 }
 
 plist() {
@@ -131,12 +188,30 @@ plist() {
 }
 
 replace() {
-	name=$1
+	cat \
+	| set RunAtLoad false \
+	| set KeepAlive false \
+	| set Label "$prefix.$name"
+}
+
+set() {
+	key="$1"
+	value="${@:2}"
 	tmpfile=/tmp/lch-$RANDOM.plist
+
 	cat > $tmpfile
-	plist \
-	  -c "Set :RunAtLoad false" \
-	  -c "Set :Label $prefix.$name" $tmpfile
+	plist -c "Set :$key $value" $tmpfile
+	cat $tmpfile
+}
+
+add() {
+	key="$1"
+	type="$2"
+	value="${@:3}"
+	tmpfile=/tmp/lch-$RANDOM.plist
+
+	cat > $tmpfile
+	plist -c "Add :$key $type $value" $tmpfile
 	cat $tmpfile
 }
 
