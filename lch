@@ -25,9 +25,9 @@ usage() {
 		  lch set <name> <key> <value>        - set a key in an agent's plist
 
 		Examples:
-		  brew install mysql
-		  lch brew mysql
-		  lch start mysql
+		  brew install postgresql
+		  lch brew postgresql
+		  lch start postgresql
 	END
 }
 

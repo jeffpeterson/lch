@@ -6,6 +6,7 @@
 
     lch load <name>   - load an agent installed by lch
     lch unload <name> - unload an agent installed by lch
+    lch reload <name> - reload an agent installed by lch
 
     lch start <name> - start a loaded agent
     lch stop <name>  - stop a loaded agent
@@ -22,8 +23,9 @@
     lch add <name> <key> <type> <value> - add a key to an agent's plist
     lch set <name> <key> <value>        - set a key in an agent's plist
 
+
 ## Example
 
-    brew install mysql
-    lch brew mysql
-    lch start mysql
+    brew install postgresql
+    lch brew postgresql
+    lch start postgresql
