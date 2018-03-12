@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+prefix=lch.
+
 usage() {
 	cat<<-END
 		Usage:
@@ -27,10 +29,7 @@ usage() {
 		  lch brew mysql
 		  lch start mysql
 	END
-
 }
-
-prefix=lch
 
 lch() {
 	case $1 in
@@ -42,23 +41,24 @@ lch() {
 				<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 				<plist version="1.0">
 				<dict>
-				  <key>KeepAlive</key>
-				  <false/>
 				  <key>Label</key>
-				  <string>$prefix.$2</string>
+				  <string>$prefix$2</string>
+
 				  <key>ProgramArguments</key>
 				  <array>
 				    <string>/path/to/command</string>
 				    <string>--help</string>
 				  </array>
-				  <key>RunAtLoad</key>
-				  <false/>
+
 				  <key>WorkingDirectory</key>
 				  <string>/usr/local/var</string>
+
 				  <key>StandardErrorPath</key>
-				  <string>$HOME/.log/$prefix.$2.stderr.log</string>
+				  <string>$HOME/.log/$prefix$2.stderr.log</string>
+
 				  <key>StandardOutPath</key>
-				  <string>$HOME/.log/$prefix.$2.stdout.log</string>
+				  <string>$HOME/.log/$prefix$2.stdout.log</string>
+
 				  <key>EnvironmentVariables</key>
 				  <dict>
 				    <key>PATH</key>
@@ -68,7 +68,7 @@ lch() {
 				</plist>
 			END
 			mkdir -p $HOME/.log
-			;;
+		;;
 
 	brew)
 		name=$2
@@ -80,7 +80,7 @@ lch() {
 
 		cat "$filename" | replace $name > `agentname $name`
 		lch load $name
-		;;
+	;;
 
 	unbrew)
 		name=$2
@@ -88,7 +88,7 @@ lch() {
 
 		lch unload $name
 		lch rm $name
-		;;
+	;;
 
 	set)
 		require $2 # name
@@ -98,7 +98,7 @@ lch() {
 		filename=`agentname $2`
 
 		cat $filename | set $3 "${@:4}" > $filename
-		;;
+	;;
 
 	add)
 		require $2 # name
@@ -109,78 +109,135 @@ lch() {
 		filename=`agentname $2`
 
 		cat $filename | add $3 $4 "${@:5}" > $filename
-		;;
+	;;
+
+
+	restart | kickstart)
+		name=$2
+		require $name
+
+		run launchctl kickstart -k -p `target $name`
+	;;
+
+	blame)
+		name=$2
+		require $name
+
+		run launchctl blame `target $name`
+	;;
+
+	print)
+		name=$2
+		require $name
+
+		run launchctl print `target $name`
+	;;
+
+	uncache)
+		name=$2
+		require $name
+
+		run launchctl uncache `target $name`
+	;;
+
+	enable)
+		name=$2
+		require $name
+
+		run launchctl enable `target $name`
+	;;
+
+	disable)
+		name=$2
+		require $name
+
+		run launchctl disable `target $name`
+	;;
 
 	start)
 		name=$2
 		require $name
 
-		launchctl start $prefix.$name
-		;;
+		launchctl start $prefix$name
+	;;
 
 	stop)
 		name=$2
 		require $name
 
-		launchctl stop $prefix.$name
-		;;
+		launchctl stop $prefix$name
+	;;
 
-	restart)
-		lch stop $2
-		lch start $2
-		;;
+
+
 
 	load)
 		name=$2
 		require $name
 
 		launchctl load `agentname $name`
-		;;
+	;;
 
 	reload)
 		lch unload $2
 		lch load $2
-		;;
+	;;
 
 	unload)
 		name=$2
 		require $name
 
 		launchctl unload `agentname $name`
-		;;
+	;;
 
 	list | ls)
 		launchctl list | head -n1
-		launchctl list | grep -E 'lch\..+'
-		;;
+		launchctl list | grep -E "$prefix.+"
+	;;
 
 	cat)
 		name=$2
 		require $name
 
 		cat `agentname $name`
-		;;
+	;;
+
+  tail | log)
+    name=$2
+    require $name
+
+    tail -n100 -f "$HOME/.log/$prefix$name.stderr.log" "$HOME/.log/$prefix$name.stdout.log"
+  ;;
 
 	edit)
 		name=$2
 		require $name
 
 		$EDITOR `agentname $name`
-		;;
+	;;
 
 	rm)
 		name=$2
 		require $name
 
 		rm `agentname $name`
-		;;
+	;;
 	*)
 		usage
 	esac
 }
 
+run() {
+  echo "$@"
+  $@
+}
+
 agentname() {
-  echo -n "$HOME/Library/LaunchAgents/$prefix.$1.plist"
+  echo -n "$HOME/Library/LaunchAgents/$prefix$1.plist"
+}
+
+target() {
+	echo -n "gui/$UID/$prefix$1"
 }
 
 plist() {
@@ -191,7 +248,7 @@ replace() {
 	cat \
 	| set RunAtLoad false \
 	| set KeepAlive false \
-	| set Label "$prefix.$name"
+	| set Label "$prefix$name"
 }
 
 set() {
