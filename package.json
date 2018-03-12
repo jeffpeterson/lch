@@ -1,0 +1,23 @@
+{
+  "name": "lch",
+  "version": "1.0.0",
+  "description": "Small tool for managing LaunchAgents.",
+  "bin": {
+    "lch": "./lch"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jeffpeterson/lch.git"
+  },
+  "keywords": [
+    "mac",
+    "launchagent",
+    "launchctl"
+  ],
+  "author": "Jeff Peterson",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/jeffpeterson/lch/issues"
+  },
+  "homepage": "https://github.com/jeffpeterson/lch#readme"
+}
