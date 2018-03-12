@@ -5,29 +5,30 @@ prefix=lch.
 usage() {
 	cat<<-END
 		Usage:
-		  lch load <name>   - load an agent installed by lch
-		  lch unload <name> - unload an agent installed by lch
-		  lch reload <name> - reload an agent installed by lch
+			lch load <name>   - load an agent installed by lch
+			lch unload <name> - unload an agent installed by lch
+			lch reload <name> - reload an agent installed by lch
 
-		  lch start <name> - start a loaded agent
-		  lch stop <name>  - stop a loaded agent
+			lch start <name> - start a loaded agent
+			lch stop <name>  - stop a loaded agent
 
-		  lch brew <name>   - load an agent from an homebrew formula and tell it not to start at boot
-		  lch unbrew <name> - unload agent from an homebrew formula
+			lch brew <name>   - load an agent from an homebrew formula and tell it not to start at boot
+			lch unbrew <name> - unload agent from an homebrew formula
 
-		  lch cat <name>  - show plist of agent
-		  lch edit <name> - edit an agent's plist
-		  lch list        - list agents installed by lch
-		  lch new <name>  - create an empty agent
-		  lch rm <name>   - remove an agent installed by lch
+			lch cat <name>  - show plist of agent
+			lch edit <name> - edit an agent's plist
+			lch list        - list agents installed by lch
+			lch new <name>  - create an empty agent
+			lch rm <name>   - remove an agent installed by lch
 
-		  lch add <name> <key> <type> <value> - add a key to an agent's plist
-		  lch set <name> <key> <value>        - set a key in an agent's plist
+			lch add <name> <key> <type> <value> - add a key to an agent's plist
+			lch set <name> <key> <value>        - set a key in an agent's plist
+			lch read <name> <key>               - read a key in an agent's plist
 
 		Examples:
-		  brew install postgresql
-		  lch brew postgresql
-		  lch start postgresql
+			brew install postgresql
+			lch brew postgresql
+			lch start postgresql
 	END
 }
 
@@ -41,29 +42,29 @@ lch() {
 				<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 				<plist version="1.0">
 				<dict>
-				  <key>Label</key>
-				  <string>$prefix$2</string>
+					<key>Label</key>
+					<string>$prefix$2</string>
 
-				  <key>ProgramArguments</key>
-				  <array>
-				    <string>/path/to/command</string>
-				    <string>--help</string>
-				  </array>
+					<key>ProgramArguments</key>
+					<array>
+						<string>/path/to/command</string>
+						<string>--help</string>
+					</array>
 
-				  <key>WorkingDirectory</key>
-				  <string>/usr/local/var</string>
+					<key>WorkingDirectory</key>
+					<string>/usr/local/var</string>
 
-				  <key>StandardErrorPath</key>
-				  <string>$HOME/.log/$prefix$2.stderr.log</string>
+					<key>StandardErrorPath</key>
+					<string>$HOME/.log/$prefix$2.stderr.log</string>
 
-				  <key>StandardOutPath</key>
-				  <string>$HOME/.log/$prefix$2.stdout.log</string>
+					<key>StandardOutPath</key>
+					<string>$HOME/.log/$prefix$2.stdout.log</string>
 
-				  <key>EnvironmentVariables</key>
-				  <dict>
-				    <key>PATH</key>
-				    <string>$PATH</string>
-				  </dict>
+					<key>EnvironmentVariables</key>
+					<dict>
+						<key>PATH</key>
+						<string>$PATH</string>
+					</dict>
 				</dict>
 				</plist>
 			END
@@ -88,6 +89,15 @@ lch() {
 
 		lch unload $name
 		lch rm $name
+	;;
+
+	read)
+		require $2 # name
+		require $3 # key
+
+		filename=`agentname $2`
+
+		cat $filename | read ${@:3}
 	;;
 
 	set)
@@ -202,12 +212,14 @@ lch() {
 		cat `agentname $name`
 	;;
 
-  tail | log)
-    name=$2
-    require $name
+	tail | log)
+		name=$2
+		require $name
+		filename=`agentname $2`
+		logs=`cat $filename | read StandardErrorPath StandardOutPath`
 
-    tail -n100 -f "$HOME/.log/$prefix$name.stderr.log" "$HOME/.log/$prefix$name.stdout.log"
-  ;;
+		tail -n100 -f $logs
+	;;
 
 	edit)
 		name=$2
@@ -228,12 +240,12 @@ lch() {
 }
 
 run() {
-  echo "$@"
-  $@
+	echo "$@"
+	$@
 }
 
 agentname() {
-  echo -n "$HOME/Library/LaunchAgents/$prefix$1.plist"
+	echo -n "$HOME/Library/LaunchAgents/$prefix$1.plist"
 }
 
 target() {
@@ -249,6 +261,16 @@ replace() {
 	| set RunAtLoad false \
 	| set KeepAlive false \
 	| set Label "$prefix$name"
+}
+
+read() {
+	keys="${@}"
+	tmpfile=/tmp/lch-$RANDOM.plist
+
+	cat > $tmpfile
+	for k in $keys; do
+		plist -c "Print :$k" $tmpfile 2> /dev/null
+	done;
 }
 
 set() {
